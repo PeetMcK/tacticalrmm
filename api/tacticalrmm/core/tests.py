@@ -583,7 +583,7 @@ class TestCoreUtils(TacticalTestCase):
         )
         self.assertEqual(
             r,
-            "http://127.0.0.1:4430/meshagents?id=abc123&installflags=2&meshinstall=10005",
+            "http://127.0.0.1:4430/meshagents?id=10005",
         )
 
         r = get_meshagent_url(
@@ -608,7 +608,7 @@ class TestCoreUtils(TacticalTestCase):
         )
         self.assertEqual(
             r,
-            "http://tactical-meshcentral:4443/meshagents?id=abc123&installflags=2&meshinstall=10005",
+            "http://tactical-meshcentral:4443/meshagents?id=10005",
         )
 
         r = get_meshagent_url(
@@ -632,7 +632,7 @@ class TestCoreUtils(TacticalTestCase):
         )
         self.assertEqual(
             r,
-            "https://mesh.example.com/meshagents?id=abc123&installflags=2&meshinstall=10005",
+            "https://mesh.example.com/meshagents?id=10005",
         )
 
         r = get_meshagent_url(
@@ -656,7 +656,7 @@ class TestCoreUtils(TacticalTestCase):
         )
         self.assertEqual(
             r,
-            "http://127.0.0.1:8653/meshagents?id=abc123&installflags=2&meshinstall=10005",
+            "http://127.0.0.1:8653/meshagents?id=10005",
         )
 
         r = get_meshagent_url(

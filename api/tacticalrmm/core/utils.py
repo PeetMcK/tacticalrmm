@@ -1,6 +1,8 @@
+import hashlib
 import json
 import os
 import re
+import secrets
 import subprocess
 import tempfile
 import time
@@ -157,20 +159,44 @@ def download_mesh_agent_with_msh(mesh_url: str, msh_url: str) -> FileResponse:
     msh_resp = requests.get(msh_url, timeout=15, verify=False)
     msh_data = msh_resp.content
 
+    # Strip leading blank lines/whitespace from .msh file
+    msh_data = msh_data.lstrip(b'\r\n')
+
+    # Generate random 8-character suffix to prevent unwanted in-place upgrades
+    rand_suffix = secrets.token_hex(4)  # 4 bytes = 8 hex characters
+
+    # Calculate SHA256 hashes
+    binary_hash = hashlib.sha256(binary_data).hexdigest()
+    msh_hash = hashlib.sha256(msh_data).hexdigest()
+
+    # Create filenames with random suffix
+    binary_filename = f"meshagent{rand_suffix}"
+    msh_filename = f"meshagent{rand_suffix}.msh"
+
+    # Create SHA256SUMS content in standard format (hash  filename)
+    sha256sums_content = f"{binary_hash}  {binary_filename}\n{msh_hash}  {msh_filename}\n"
+    sha256sums_data = sha256sums_content.encode('utf-8')
+
     # Create tar.gz archive in memory
     buffer = io.BytesIO()
     with tarfile.open(fileobj=buffer, mode="w:gz") as tar:
         # Add binary
-        binary_info = tarfile.TarInfo(name="meshagent")
+        binary_info = tarfile.TarInfo(name=binary_filename)
         binary_info.size = len(binary_data)
         binary_info.mode = 0o755  # Executable
         tar.addfile(binary_info, io.BytesIO(binary_data))
 
         # Add .msh file
-        msh_info = tarfile.TarInfo(name="meshagent.msh")
+        msh_info = tarfile.TarInfo(name=msh_filename)
         msh_info.size = len(msh_data)
         msh_info.mode = 0o644
         tar.addfile(msh_info, io.BytesIO(msh_data))
+
+        # Add SHA256SUMS file
+        sha256sums_info = tarfile.TarInfo(name="SHA256SUMS")
+        sha256sums_info.size = len(sha256sums_data)
+        sha256sums_info.mode = 0o644
+        tar.addfile(sha256sums_info, io.BytesIO(sha256sums_data))
 
     buffer.seek(0)
 
@@ -258,7 +284,14 @@ def get_meshagent_url(
             "meshid": mesh_device_id,
             "installflags": 0,
         }
+    elif plat == AgentPlat.DARWIN:
+        # For macOS, use simplified format - just the ident
+        # Configuration comes from .msh file, not the binary URL
+        params = {
+            "id": ident,
+        }
     else:
+        # Linux platforms
         params = {
             "id": mesh_device_id,
             "installflags": 2,
