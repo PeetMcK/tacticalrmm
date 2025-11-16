@@ -459,6 +459,41 @@ class Agent(BaseAuditModel):
             return ""
 
     @property
+    def battery_info(self) -> Optional[Dict[str, Any]]:
+        """Battery information for laptops (macOS only currently)"""
+        if self.is_posix:
+            try:
+                return cast(Dict[str, Any], self.wmi_detail.get("battery"))
+            except:
+                return None
+        # Could add Windows Win32_Battery support here in the future
+        return None
+
+    @property
+    def firewall_enabled(self) -> Optional[bool]:
+        """Firewall enabled status"""
+        if self.plat == AgentPlat.DARWIN:
+            try:
+                state = self.wmi_detail.get("firewall_global_state", 0)
+                return state > 0  # 1 or 2 means enabled
+            except:
+                return None
+        # Could add Windows firewall support here in the future
+        return None
+
+    @property
+    def encryption_enabled(self) -> Optional[bool]:
+        """FileVault/BitLocker encryption status"""
+        if self.plat == AgentPlat.DARWIN:
+            try:
+                status = self.wmi_detail.get("encryption_status", "unknown")
+                return status == "on"
+            except:
+                return None
+        # Could add Windows BitLocker support here in the future
+        return None
+
+    @property
     def hex_mesh_node_id(self) -> str:
         try:
             return _b64_to_hex(self.mesh_node_id)
