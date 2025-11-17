@@ -191,6 +191,7 @@ class PAAction(models.TextChoices):
     SCHED_REBOOT = "schedreboot", "Scheduled Reboot"
     AGENT_UPDATE = "agentupdate", "Agent Update"
     CHOCO_INSTALL = "chocoinstall", "Chocolatey Software Install"
+    INSTALLOMATOR_INSTALL = "installomatorinstall", "Installomator Software Install"
     RUN_CMD = "runcmd", "Run Command"
     RUN_SCRIPT = "runscript", "Run Script"
     RUN_PATCH_SCAN = "runpatchscan", "Run Patch Scan"

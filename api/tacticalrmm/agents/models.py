@@ -97,6 +97,8 @@ class Agent(BaseAuditModel):
     check_interval = models.PositiveIntegerField(default=120)
     needs_reboot = models.BooleanField(default=False)
     choco_installed = models.BooleanField(default=False)
+    installomator_installed = models.BooleanField(default=False)
+    installomator_version = models.CharField(max_length=20, null=True, blank=True)
     wmi_detail = models.JSONField(null=True, blank=True)
     patches_last_installed = models.DateTimeField(null=True, blank=True)
     time_zone = models.CharField(
