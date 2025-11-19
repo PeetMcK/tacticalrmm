@@ -15,6 +15,7 @@ urlpatterns = [
     path("checkin/", views.CheckIn.as_view()),
     path("syncmesh/", views.SyncMeshNodeID.as_view()),
     path("choco/", views.Choco.as_view()),
+    path("installomator/", views.Installomator.as_view()),
     path("winupdates/", views.WinUpdates.as_view()),
     path("superseded/", views.SupersededWinUpdate.as_view()),
     path("<int:pk>/<str:agentid>/histresult/", views.AgentHistoryResult.as_view()),
