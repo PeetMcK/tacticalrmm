@@ -1,0 +1,6 @@
+# Ignore output files
+*.json
+*.tmp
+
+# Keep example/template files if needed
+!example*.json
