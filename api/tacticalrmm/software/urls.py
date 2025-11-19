@@ -4,6 +4,7 @@ from . import views
 
 urlpatterns = [
     path("chocos/", views.chocos),
+    path("installomator/labels/", views.installomator_labels),
     path("", views.GetSoftware.as_view()),
     path("<agent:agent_id>/", views.GetSoftware.as_view()),
     path("<agent:agent_id>/uninstall/", views.UninstallSoftware.as_view()),

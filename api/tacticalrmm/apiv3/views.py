@@ -97,6 +97,23 @@ class Choco(APIView):
         return Response("ok")
 
 
+class Installomator(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        agent = get_object_or_404(
+            Agent.objects.defer(*AGENT_DEFER), agent_id=request.data["agent_id"]
+        )
+        agent.installomator_installed = request.data["installed"]
+        if "version" in request.data:
+            agent.installomator_version = request.data["version"]
+            agent.save(update_fields=["installomator_installed", "installomator_version"])
+        else:
+            agent.save(update_fields=["installomator_installed"])
+        return Response("ok")
+
+
 class WinUpdates(APIView):
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated]

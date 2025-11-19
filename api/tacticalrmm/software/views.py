@@ -12,7 +12,7 @@ from logs.models import AuditLog, PendingAction
 from tacticalrmm.constants import AgentHistoryType, PAAction
 from tacticalrmm.helpers import notify_error
 
-from .models import ChocoSoftware, InstalledSoftware
+from .models import ChocoSoftware, InstalledSoftware, InstallomatorLabel
 from .permissions import SoftwarePerms, UninstallSoftwarePerms
 from .serializers import InstalledSoftwareSerializer
 
@@ -24,6 +24,15 @@ def chocos(request):
         return Response({})
 
     return Response(chocos.chocos)
+
+
+@api_view(["GET"])
+def installomator_labels(request):
+    labels = InstallomatorLabel.objects.last()
+    if not labels:
+        return Response([])
+
+    return Response(labels.labels)
 
 
 class GetSoftware(APIView):
@@ -46,31 +55,59 @@ class GetSoftware(APIView):
     # software install
     def post(self, request, agent_id):
         agent = get_object_or_404(Agent, agent_id=agent_id)
-        if agent.is_posix:
-            return notify_error(f"Not available for {agent.plat}")
 
-        name = request.data["name"]
+        # macOS - use Installomator
+        if agent.plat == "darwin":
+            label = request.data.get("label") or request.data.get("name")
 
-        action = PendingAction.objects.create(
-            agent=agent,
-            action_type=PAAction.CHOCO_INSTALL,
-            details={"name": name, "output": None, "installed": False},
-        )
+            action = PendingAction.objects.create(
+                agent=agent,
+                action_type=PAAction.INSTALLOMATOR_INSTALL,
+                details={"name": label, "output": None, "installed": False},
+            )
 
-        nats_data = {
-            "func": "installwithchoco",
-            "choco_prog_name": name,
-            "pending_action_pk": action.pk,
-        }
+            nats_data = {
+                "func": "installwithinstallomator",
+                "installomator_label": label,
+                "pending_action_pk": action.pk,
+            }
 
-        r = asyncio.run(agent.nats_cmd(nats_data, timeout=2))
-        if r != "ok":
-            action.delete()
-            return notify_error("Unable to contact the agent")
+            r = asyncio.run(agent.nats_cmd(nats_data, timeout=2))
+            if r != "ok":
+                action.delete()
+                return notify_error("Unable to contact the agent")
 
-        return Response(
-            f"{name} will be installed shortly on {agent.hostname}. Check the Pending Actions menu to see the status/output"
-        )
+            return Response(
+                f"{label} will be installed shortly on {agent.hostname}. Check the Pending Actions menu to see the status/output"
+            )
+
+        # Windows - use Chocolatey
+        elif agent.plat == "windows":
+            name = request.data["name"]
+
+            action = PendingAction.objects.create(
+                agent=agent,
+                action_type=PAAction.CHOCO_INSTALL,
+                details={"name": name, "output": None, "installed": False},
+            )
+
+            nats_data = {
+                "func": "installwithchoco",
+                "choco_prog_name": name,
+                "pending_action_pk": action.pk,
+            }
+
+            r = asyncio.run(agent.nats_cmd(nats_data, timeout=2))
+            if r != "ok":
+                action.delete()
+                return notify_error("Unable to contact the agent")
+
+            return Response(
+                f"{name} will be installed shortly on {agent.hostname}. Check the Pending Actions menu to see the status/output"
+            )
+
+        else:
+            return notify_error(f"Software installation not available for {agent.plat}")
 
     # refresh software list
     def put(self, request, agent_id):
