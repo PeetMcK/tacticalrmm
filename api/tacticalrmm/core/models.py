@@ -85,6 +85,18 @@ class CoreSettings(BaseAuditModel):
     mesh_company_name = models.CharField(max_length=255, null=True, blank=True)
     sync_mesh_with_trmm = models.BooleanField(default=True)
     agent_auto_update = models.BooleanField(default=True)
+    # Windows agent URLs
+    agent_win_url_amd64 = models.CharField(max_length=500, null=True, blank=True)
+    agent_win_url_386 = models.CharField(max_length=500, null=True, blank=True)
+    agent_win_url_arm64 = models.CharField(max_length=500, null=True, blank=True)
+    # Linux agent URLs
+    agent_linux_url_amd64 = models.CharField(max_length=500, null=True, blank=True)
+    agent_linux_url_arm64 = models.CharField(max_length=500, null=True, blank=True)
+    agent_linux_url_arm = models.CharField(max_length=500, null=True, blank=True)
+    # macOS agent URLs
+    agent_darwin_url_amd64 = models.CharField(max_length=500, null=True, blank=True)
+    agent_darwin_url_arm64 = models.CharField(max_length=500, null=True, blank=True)
+    agent_darwin_url_universal = models.CharField(max_length=500, null=True, blank=True)
     workstation_policy = models.ForeignKey(
         "automation.Policy",
         related_name="default_workstation_policy",

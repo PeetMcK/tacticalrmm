@@ -11,6 +11,15 @@ from tacticalrmm.constants import MeshAgentIdent
 
 
 def get_agent_url(*, goarch: str, plat: str, token: str = "") -> str:
+    # Check for custom URL in CoreSettings first
+    core_settings = get_core_settings()
+    custom_url_field = f"agent_{plat}_url_{goarch}"
+    custom_url = getattr(core_settings, custom_url_field, None)
+
+    if custom_url:
+        return custom_url
+
+    # Fall back to default logic
     ver = settings.LATEST_AGENT_VER
     if token:
         params = {
