@@ -1,6 +1,8 @@
+import hashlib
 import json
 import os
 import re
+import secrets
 import subprocess
 import tempfile
 import time
@@ -131,6 +133,83 @@ def download_mesh_agent(dl_url: str) -> FileResponse:
         return FileResponse(open(fp.name, "rb"), as_attachment=True, filename=fp.name)
 
 
+def get_mesh_msh_url(*, mesh_site: str, mesh_device_id: str) -> str:
+    """Constructs URL to download .msh configuration file from MeshCentral"""
+    if settings.DOCKER_BUILD:
+        base = settings.MESH_WS_URL.replace("ws://", "http://")
+    elif getattr(settings, "USE_EXTERNAL_MESH", False):
+        base = mesh_site
+    else:
+        mesh_port = getattr(settings, "MESH_PORT", 4430)
+        base = f"http://127.0.0.1:{mesh_port}"
+
+    return f"{base}/meshsettings?id={mesh_device_id}"
+
+
+def download_mesh_agent_with_msh(mesh_url: str, msh_url: str) -> FileResponse:
+    """Downloads mesh agent binary and .msh file, returns as tar.gz archive"""
+    import tarfile
+    import io
+
+    # Download binary
+    binary_resp = requests.get(mesh_url, stream=True, timeout=15, verify=False)
+    binary_data = binary_resp.content
+
+    # Download .msh file
+    msh_resp = requests.get(msh_url, timeout=15, verify=False)
+    msh_data = msh_resp.content
+
+    # Strip leading blank lines/whitespace from .msh file
+    msh_data = msh_data.lstrip(b'\r\n')
+
+    # Generate random 8-character suffix to prevent unwanted in-place upgrades
+    rand_suffix = secrets.token_hex(4)  # 4 bytes = 8 hex characters
+
+    # Calculate SHA256 hashes
+    binary_hash = hashlib.sha256(binary_data).hexdigest()
+    msh_hash = hashlib.sha256(msh_data).hexdigest()
+
+    # Create filenames with random suffix
+    binary_filename = f"meshagent{rand_suffix}"
+    msh_filename = f"meshagent{rand_suffix}.msh"
+
+    # Create SHA256SUMS content in standard format (hash  filename)
+    sha256sums_content = f"{binary_hash}  {binary_filename}\n{msh_hash}  {msh_filename}\n"
+    sha256sums_data = sha256sums_content.encode('utf-8')
+
+    # Create tar.gz archive in memory
+    buffer = io.BytesIO()
+    with tarfile.open(fileobj=buffer, mode="w:gz") as tar:
+        # Add binary
+        binary_info = tarfile.TarInfo(name=binary_filename)
+        binary_info.size = len(binary_data)
+        binary_info.mode = 0o755  # Executable
+        tar.addfile(binary_info, io.BytesIO(binary_data))
+
+        # Add .msh file
+        msh_info = tarfile.TarInfo(name=msh_filename)
+        msh_info.size = len(msh_data)
+        msh_info.mode = 0o644
+        tar.addfile(msh_info, io.BytesIO(msh_data))
+
+        # Add SHA256SUMS file
+        sha256sums_info = tarfile.TarInfo(name="SHA256SUMS")
+        sha256sums_info.size = len(sha256sums_data)
+        sha256sums_info.mode = 0o644
+        tar.addfile(sha256sums_info, io.BytesIO(sha256sums_data))
+
+    buffer.seek(0)
+
+    # Write to temporary file and return
+    with tempfile.NamedTemporaryFile(
+        prefix="mesh-", suffix=".tar.gz", dir=settings.EXE_DIR, delete=False
+    ) as fp:
+        fp.write(buffer.getvalue())
+        return FileResponse(
+            open(fp.name, "rb"), as_attachment=True, filename="meshagent.tar.gz"
+        )
+
+
 def _b64_to_hex(h: str) -> str:
     return b64encode(bytes.fromhex(h)).decode().replace(r"/", "$").replace(r"+", "@")
 
@@ -205,7 +284,14 @@ def get_meshagent_url(
             "meshid": mesh_device_id,
             "installflags": 0,
         }
+    elif plat == AgentPlat.DARWIN:
+        # For macOS, use simplified format - just the ident
+        # Configuration comes from .msh file, not the binary URL
+        params = {
+            "id": ident,
+        }
     else:
+        # Linux platforms
         params = {
             "id": mesh_device_id,
             "installflags": 2,

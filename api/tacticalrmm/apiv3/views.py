@@ -24,8 +24,10 @@ from checks.serializers import CheckRunnerGetSerializer
 from core.tasks import sync_mesh_perms_task
 from core.utils import (
     download_mesh_agent,
+    download_mesh_agent_with_msh,
     get_core_settings,
     get_mesh_device_id,
+    get_mesh_msh_url,
     get_mesh_ws_url,
     get_meshagent_url,
 )
@@ -447,7 +449,16 @@ class MeshExe(APIView):
         )
 
         try:
-            return download_mesh_agent(dl_url)
+            # For Darwin, download tar.gz archive with binary + .msh file
+            if request.data["plat"] == AgentPlat.DARWIN:
+                msh_url = get_mesh_msh_url(
+                    mesh_site=core.mesh_site,
+                    mesh_device_id=mesh_device_id,
+                )
+                return download_mesh_agent_with_msh(dl_url, msh_url)
+            else:
+                # Windows uses single binary download
+                return download_mesh_agent(dl_url)
         except Exception as e:
             return notify_error(f"Unable to download mesh agent: {e}")
 
