@@ -42,6 +42,7 @@ class GoArch(models.TextChoices):
     i386 = "386", "386"
     ARM64 = "arm64", "arm64"
     ARM32 = "arm", "arm"
+    UNIVERSAL = "universal", "universal"
 
 
 class CustomFieldModel(models.TextChoices):

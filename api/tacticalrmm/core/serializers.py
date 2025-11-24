@@ -31,9 +31,54 @@ class HostedCoreMixin:
 
 class CoreSettingsSerializer(HostedCoreMixin, serializers.ModelSerializer):
     all_timezones = serializers.SerializerMethodField("all_time_zones")
+    # Default agent URLs (computed from current logic)
+    default_agent_win_url_amd64 = serializers.SerializerMethodField()
+    default_agent_win_url_386 = serializers.SerializerMethodField()
+    default_agent_win_url_arm64 = serializers.SerializerMethodField()
+    default_agent_linux_url_amd64 = serializers.SerializerMethodField()
+    default_agent_linux_url_arm64 = serializers.SerializerMethodField()
+    default_agent_linux_url_arm = serializers.SerializerMethodField()
+    default_agent_darwin_url_amd64 = serializers.SerializerMethodField()
+    default_agent_darwin_url_arm64 = serializers.SerializerMethodField()
+    default_agent_darwin_url_universal = serializers.SerializerMethodField()
 
     def all_time_zones(self, obj):
         return ALL_TIMEZONES
+
+    def _get_default_agent_url(self, goarch: str, plat: str) -> str:
+        """Helper to generate default agent URL"""
+        from agents.utils import get_agent_url
+        from .utils import token_is_valid
+
+        token, is_valid = token_is_valid()
+        return get_agent_url(goarch=goarch, plat=plat, token=token if is_valid else "")
+
+    def get_default_agent_win_url_amd64(self, obj):
+        return self._get_default_agent_url("amd64", "windows")
+
+    def get_default_agent_win_url_386(self, obj):
+        return self._get_default_agent_url("386", "windows")
+
+    def get_default_agent_win_url_arm64(self, obj):
+        return self._get_default_agent_url("arm64", "windows")
+
+    def get_default_agent_linux_url_amd64(self, obj):
+        return self._get_default_agent_url("amd64", "linux")
+
+    def get_default_agent_linux_url_arm64(self, obj):
+        return self._get_default_agent_url("arm64", "linux")
+
+    def get_default_agent_linux_url_arm(self, obj):
+        return self._get_default_agent_url("arm", "linux")
+
+    def get_default_agent_darwin_url_amd64(self, obj):
+        return self._get_default_agent_url("amd64", "darwin")
+
+    def get_default_agent_darwin_url_arm64(self, obj):
+        return self._get_default_agent_url("arm64", "darwin")
+
+    def get_default_agent_darwin_url_universal(self, obj):
+        return self._get_default_agent_url("universal", "darwin")
 
     class Meta:
         model = CoreSettings
